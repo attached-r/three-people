@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯方块</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            margin-top: 20px;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: #fff;
+        }
+        #score {
+            font-size: 24px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>俄罗斯方块</h1>
+    <div id="score">分数: 0</div>
+    <div id="game-container">
+        <canvas id="tetris" width="240" height="400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tetris');
+        const context = canvas.getContext('2d');
+        const grid = 20;
+        const scoreElement = document.getElementById('score');
+        let score = 0;
+
+        // 方块形状
+        const tetrominoes = [
+            [[1,1,1,1]], // I
+            [[1,1], [1,1]], // O
+            [[1,1,1], [0,1,0]], // T
+            [[1,1,1], [1,0,0]], // L
+            [[1,1,1], [0,0,1]], // J
+            [[1,1,0], [0,1,1]], // S
+            [[0,1,1], [1,1,0]]  // Z
+        ];
+
+        let gameBoard = Array(20).fill().map(() => Array(12).fill(0));
+        let currentPiece = null;
+        let currentPiecePosition = {x: 0, y: 0};
+
+        function createPiece() {
+            const piece = tetrominoes[Math.floor(Math.random() * tetrominoes.length)];
+            currentPiece = piece;
+            currentPiecePosition = {
+                x: Math.floor((12 - piece[0].length) / 2),
+                y: 0
+            };
+        }
+
+        function draw() {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制已固定的方块
+            gameBoard.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        context.fillStyle = '#000';
+                        context.fillRect(x * grid, y * grid, grid-1, grid-1);
+                    }
+                });
+            });
+
+            // 绘制当前方块
+            if (currentPiece) {
+                context.fillStyle = '#f00';
+                currentPiece.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value) {
+                            context.fillRect(
+                                (currentPiecePosition.x + x) * grid,
+                                (currentPiecePosition.y + y) * grid,
+                                grid-1,
+                                grid-1
+                            );
+                        }
+                    });
+                });
+            }
+        }
+
+        function collision() {
+            for (let y = 0; y < currentPiece.length; y++) {
+                for (let x = 0; x < currentPiece[y].length; x++) {
+                    if (currentPiece[y][x]) {
+                        const newX = currentPiecePosition.x + x;
+                        const newY = currentPiecePosition.y + y;
+                        
+                        if (newX < 0 || newX >= 12 || newY >= 20 ||
+                            (newY >= 0 && gameBoard[newY][newX])) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge() {
+            currentPiece.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        gameBoard[currentPiecePosition.y + y][currentPiecePosition.x + x] = value;
+                    }
+                });
+            });
+        }
+
+        function clearLines() {
+            for (let y = gameBoard.length - 1; y >= 0; y--) {
+                if (gameBoard[y].every(value => value)) {
+                    gameBoard.splice(y, 1);
+                    gameBoard.unshift(Array(12).fill(0));
+                    score += 100;
+                    scoreElement.textContent = `分数: ${score}`;
+                }
+            }
+        }
+
+        document.addEventListener('keydown', event => {
+            if (!currentPiece) return;
+
+            switch(event.keyCode) {
+                case 37: // 左
+                    currentPiecePosition.x--;
+                    if (collision()) {
+                        currentPiecePosition.x++;
+                    }
+                    break;
+                case 39: // 右
+                    currentPiecePosition.x++;
+                    if (collision()) {
+                        currentPiecePosition.x--;
+                    }
+                    break;
+                case 40: // 下
+                    currentPiecePosition.y++;
+                    if (collision()) {
+                        currentPiecePosition.y--;
+                        merge();
+                        clearLines();
+                        createPiece();
+                    }
+                    break;
+                case 38: // 上 (旋转)
+                    const rotated = currentPiece[0].map((_, i) =>
+                        currentPiece.map(row => row[i]).reverse()
+                    );
+                    const previousPiece = currentPiece;
+                    currentPiece = rotated;
+                    if (collision()) {
+                        currentPiece = previousPiece;
+                    }
+                    break;
+            }
+            draw();
+        });
+
+        function gameLoop() {
+            if (!currentPiece) {
+                createPiece();
+            }
+
+            currentPiecePosition.y++;
+            if (collision()) {
+                currentPiecePosition.y--;
+                merge();
+                clearLines();
+                createPiece();
+                if (collision()) {
+                    // 游戏结束
+                    gameBoard = Array(20).fill().map(() => Array(12).fill(0));
+                    score = 0;
+                    scoreElement.textContent = `分数: ${score}`;
+                }
+            }
+            draw();
+        }
+
+        // 开始游戏
+        setInterval(gameLoop, 1000);
+        draw();
+    </script>
+</body>
+</html>
