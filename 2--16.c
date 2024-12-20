@@ -49,7 +49,7 @@ int main() {
         }
         hex[m]=toHexDigit(sum);
     }
-    while(hex[m-1]!='\0')
+    while(hex[m-1]!='\0')//反序输出
     {
         printf("%c",hex[m-1]);
         m--;
